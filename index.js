@@ -18,7 +18,6 @@ app.use(cors({
   origin: [
     "http://localhost:4000",
     "http://127.0.0.1:5500",
-    "https://krisan0709.github.io"
     "https://krishna-shrivastav.github.io"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
