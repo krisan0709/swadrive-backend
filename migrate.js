@@ -184,7 +184,23 @@ await pool.query(`
     FOREIGN KEY (chat_id) REFERENCES chats(chat_id)
   )
 `);
+ await pool.query(`
+ CREATE TABLE IF NOT EXISTS payments (
+  payment_id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT,
+  customer_id INT,
+  helper_id INT,
 
+  total_amount DECIMAL(10,2),
+  platform_fee DECIMAL(10,2),
+  helper_amount DECIMAL(10,2),
+
+  payment_status ENUM('PENDING','SUCCESS','FAILED'),
+  payment_gateway_id VARCHAR(100),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+`);
 
 
 
