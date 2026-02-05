@@ -13,6 +13,14 @@ require('dotenv').config();
 
 const app = express();
 
+app.use("/api/payments", require("./routes/payments"));
+app.use("/api/webhook", require("./routes/paymentWebhook"));
+
+
+
+
+
+
 // ------------------ FIXED CORS CONFIG ------------------
 app.use(cors({
   origin: [
