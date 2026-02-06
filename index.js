@@ -426,80 +426,122 @@ app.post(
 
 
 
-app.post("/api/send-quote", (req, res) => {
-  const { task_id, helper_id, price, reach_time } = req.body;
 
-  if (!task_id || !helper_id || !price || !reach_time) {
-    return res.status(400).json({ error: "Missing fields" });
-  }
+// app.post("/api/send-quote", authMiddleware, requireRole("helper"), async (req, res) => {
+//   const { task_id, helper_id, price, reach_time } = req.body;
 
-  const sql = `
-    INSERT INTO quotes (task_id, helper_id, price, reach_time)
-    VALUES (?, ?, ?, ?)
-  `;
+//   if (!task_id || !helper_id || !price || !reach_time) {
+//     return res.status(400).json({ message: "Missing fields" });
+//   }
 
-  db.query(sql, [task_id, helper_id, price, reach_time], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "DB error" });
+//   try {
+//     await pool.query(
+//       "INSERT INTO quotes (task_id, helper_id, price, reach_time) VALUES (?, ?, ?, ?)",
+//       [task_id, helper_id, price, reach_time]
+//     );
+
+//     return res.json({ success: true, message: "Quote sent" });
+//   } catch (err) {
+//     console.error("Send quote error:", err);
+//     return res.status(500).json({ message: "DB error" });
+//   }
+// });
+
+
+
+
+
+// app.get("api/quotes", (req, res) => {
+//   const { task_id } = req.query;
+
+//   const sql = `
+//     SELECT q.id, q.price, q.reach_time, q.status,
+//            h.name AS helper_name, h.rating
+//     FROM quotes q
+//     JOIN helpers h ON q.helper_id = h.id
+//     WHERE q.task_id = ? AND q.status = 'QUOTED'
+//   `;
+
+//  pool.query(sql, [task_id], (err, results) => {
+//     if (err) {
+//       console.error(err);
+//       return res.status(500).json({ error: "DB error" });
+//     }
+//     res.json(results);
+//   });
+// });
+
+
+
+
+
+// ------------------ HELPER: SEND QUOTE ------------------
+app.post(
+  "/api/send-quote",
+  authMiddleware,
+  requireRole("helper"),
+  async (req, res) => {
+    const { task_id, helper_id, price, reach_time } = req.body;
+
+    if (!task_id || !helper_id || !price || !reach_time) {
+      return res.status(400).json({ message: "Missing fields" });
     }
-    res.json({ success: true, message: "Quote sent" });
-  });
-});
 
-app.post("api//send-quote", (req, res) => {
-  const { task_id, helper_id, price, reach_time } = req.body;
+    try {
+      await pool.query(
+        "INSERT INTO quotes (task_id, helper_id, price, reach_time) VALUES (?, ?, ?, ?)",
+        [task_id, helper_id, price, reach_time]
+      );
 
-  if (!task_id || !helper_id || !price || !reach_time) {
-    return res.status(400).json({ error: "Missing fields" });
-  }
-
-  const sql = `
-    INSERT INTO quotes (task_id, helper_id, price, reach_time)
-    VALUES (?, ?, ?, ?)
-  `;
-
-  db.query(sql, [task_id, helper_id, price, reach_time], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "DB error" });
+      return res.json({ success: true, message: "Quote sent" });
+    } catch (err) {
+      console.error("Send quote error:", err);
+      return res.status(500).json({ message: "DB error" });
     }
-    res.json({ success: true, message: "Quote sent" });
-  });
-});
+  }
+);
 
-app.get("api/quotes", (req, res) => {
+// ------------------ CUSTOMER: GET QUOTES ------------------
+app.get("/api/quotes", async (req, res) => {
   const { task_id } = req.query;
 
-  const sql = `
-    SELECT q.id, q.price, q.reach_time, q.status,
-           h.name AS helper_name, h.rating
-    FROM quotes q
-    JOIN helpers h ON q.helper_id = h.id
-    WHERE q.task_id = ? AND q.status = 'QUOTED'
-  `;
+  try {
+    const [rows] = await pool.query(
+      `SELECT q.id, q.price, q.reach_time, q.status,
+              u.full_name AS helper_name
+       FROM quotes q
+       JOIN users u ON q.helper_id = u.user_id
+       WHERE q.task_id = ? AND q.status = 'QUOTED'`,
+      [task_id]
+    );
 
-  db.query(sql, [task_id], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "DB error" });
-    }
-    res.json(results);
-  });
+    res.json(rows);
+  } catch (err) {
+    console.error("Get quotes error:", err);
+    res.status(500).json({ message: "Failed to fetch quotes" });
+  }
 });
+
+
+
+
+
+
+
+
 
 // Accept a quote
 app.post("/api/accept-quote", (req, res) => {
   const { quote_id, task_id } = req.body;
 
   // 1. Selected quote ACCEPTED
-  db.query(
+  pool.query(
     "UPDATE quotes SET status='ACCEPTED' WHERE id=?",
     [quote_id]
   );
 
   // 2. Others REJECTED
-  db.query(
+  pool.query(
     "UPDATE quotes SET status='REJECTED' WHERE task_id=? AND id!=?",
     [task_id, quote_id]
   );
