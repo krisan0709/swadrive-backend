@@ -424,6 +424,103 @@ app.post(
 
 
 
+
+
+app.post("/api/send-quote", (req, res) => {
+  const { task_id, helper_id, price, reach_time } = req.body;
+
+  if (!task_id || !helper_id || !price || !reach_time) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  const sql = `
+    INSERT INTO quotes (task_id, helper_id, price, reach_time)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [task_id, helper_id, price, reach_time], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "DB error" });
+    }
+    res.json({ success: true, message: "Quote sent" });
+  });
+});
+
+app.post("api//send-quote", (req, res) => {
+  const { task_id, helper_id, price, reach_time } = req.body;
+
+  if (!task_id || !helper_id || !price || !reach_time) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  const sql = `
+    INSERT INTO quotes (task_id, helper_id, price, reach_time)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [task_id, helper_id, price, reach_time], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "DB error" });
+    }
+    res.json({ success: true, message: "Quote sent" });
+  });
+});
+
+app.get("api/quotes", (req, res) => {
+  const { task_id } = req.query;
+
+  const sql = `
+    SELECT q.id, q.price, q.reach_time, q.status,
+           h.name AS helper_name, h.rating
+    FROM quotes q
+    JOIN helpers h ON q.helper_id = h.id
+    WHERE q.task_id = ? AND q.status = 'QUOTED'
+  `;
+
+  db.query(sql, [task_id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "DB error" });
+    }
+    res.json(results);
+  });
+});
+
+// Accept a quote
+app.post("/api/accept-quote", (req, res) => {
+  const { quote_id, task_id } = req.body;
+
+  // 1. Selected quote ACCEPTED
+  db.query(
+    "UPDATE quotes SET status='ACCEPTED' WHERE id=?",
+    [quote_id]
+  );
+
+  // 2. Others REJECTED
+  db.query(
+    "UPDATE quotes SET status='REJECTED' WHERE task_id=? AND id!=?",
+    [task_id, quote_id]
+  );
+
+  res.json({ success: true });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.post('/api/tasks/:task_id/review', authMiddleware, requireRole("customer"), async (req, res) => {
   try {
     const { rating, comment } = req.body;
