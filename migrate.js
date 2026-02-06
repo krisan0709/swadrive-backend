@@ -203,6 +203,24 @@ await pool.query(`
 `);
 
 
+await pool.query(`
+CREATE TABLE IF NOT EXISTS quotes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  helper_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  reach_time INT NOT NULL,
+  status ENUM('QUOTED','ACCEPTED','REJECTED') DEFAULT 'QUOTED',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX (task_id),
+  INDEX (helper_id)
+)
+`);
+
+
+    
+
 
     console.log("✅ All tables created successfully!");
 
