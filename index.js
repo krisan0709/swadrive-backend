@@ -534,24 +534,69 @@ app.get("/api/quotes", async (req, res) => {
 
 
 // Accept a quote
-app.post("/api/accept-quote", (req, res) => {
-  const { quote_id, task_id } = req.body;
+app.post(
+  "/api/accept-quote",
+  authMiddleware,
+  requireRole("customer"),
+  async (req, res) => {
+    const { quote_id, task_id } = req.body;
 
-  // 1. Selected quote ACCEPTED
-  pool.query(
-    "UPDATE quotes SET status='ACCEPTED' WHERE id=?",
-    [quote_id]
-  );
+    try {
+      // 1️⃣ Verify task belongs to this customer
+      const [[task]] = await pool.query(
+        "SELECT * FROM tasks WHERE task_id=? AND user_id=?",
+        [task_id, req.user.user_id]
+      );
 
-  // 2. Others REJECTED
-  pool.query(
-    "UPDATE quotes SET status='REJECTED' WHERE task_id=? AND id!=?",
-    [task_id, quote_id]
-  );
+      if (!task) {
+        return res.status(403).json({ message: "Not your task" });
+      }
 
-  res.json({ success: true });
-});
+      // 2️⃣ Get selected quote
+      const [[quote]] = await pool.query(
+        "SELECT * FROM quotes WHERE id=? AND task_id=?",
+        [quote_id, task_id]
+      );
 
+      if (!quote) {
+        return res.status(400).json({ message: "Invalid quote" });
+      }
+
+      // 3️⃣ Accept selected quote
+      await pool.query(
+        "UPDATE quotes SET status='ACCEPTED' WHERE id=?",
+        [quote_id]
+      );
+
+      // 4️⃣ Reject others
+      await pool.query(
+        "UPDATE quotes SET status='REJECTED' WHERE task_id=? AND id!=?",
+        [task_id, quote_id]
+      );
+
+      // 5️⃣ Assign task to helper
+      await pool.query(
+        "INSERT INTO task_assignments (task_id, helper_id) VALUES (?, ?)",
+        [task_id, quote.helper_id]
+      );
+
+      // 6️⃣ Lock task
+      await pool.query(
+        "UPDATE tasks SET status='assigned' WHERE task_id=?",
+        [task_id]
+      );
+
+      return res.json({
+        success: true,
+        message: "Quote accepted, helper assigned"
+      });
+
+    } catch (err) {
+      console.error("Accept quote error:", err);
+      return res.status(500).json({ message: "Failed to accept quote" });
+    }
+  }
+);
 
 
 
