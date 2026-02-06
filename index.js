@@ -481,9 +481,11 @@ app.post(
   authMiddleware,
   requireRole("helper"),
   async (req, res) => {
-    const { task_id, helper_id, price, reach_time } = req.body;
 
-    if (!task_id || !helper_id || !price || !reach_time) {
+    const { task_id, price, reach_time } = req.body;
+    const helper_id = req.user.user_id; // 🔥 JWT se
+
+    if (!task_id || !price || !reach_time) {
       return res.status(400).json({ message: "Missing fields" });
     }
 
@@ -500,6 +502,7 @@ app.post(
     }
   }
 );
+
 
 // ------------------ CUSTOMER: GET QUOTES ------------------
 app.get("/api/quotes", async (req, res) => {
