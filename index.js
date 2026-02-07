@@ -427,54 +427,6 @@ app.post(
 
 
 
-// app.post("/api/send-quote", authMiddleware, requireRole("helper"), async (req, res) => {
-//   const { task_id, helper_id, price, reach_time } = req.body;
-
-//   if (!task_id || !helper_id || !price || !reach_time) {
-//     return res.status(400).json({ message: "Missing fields" });
-//   }
-
-//   try {
-//     await pool.query(
-//       "INSERT INTO quotes (task_id, helper_id, price, reach_time) VALUES (?, ?, ?, ?)",
-//       [task_id, helper_id, price, reach_time]
-//     );
-
-//     return res.json({ success: true, message: "Quote sent" });
-//   } catch (err) {
-//     console.error("Send quote error:", err);
-//     return res.status(500).json({ message: "DB error" });
-//   }
-// });
-
-
-
-
-
-// app.get("api/quotes", (req, res) => {
-//   const { task_id } = req.query;
-
-//   const sql = `
-//     SELECT q.id, q.price, q.reach_time, q.status,
-//            h.name AS helper_name, h.rating
-//     FROM quotes q
-//     JOIN helpers h ON q.helper_id = h.id
-//     WHERE q.task_id = ? AND q.status = 'QUOTED'
-//   `;
-
-//  pool.query(sql, [task_id], (err, results) => {
-//     if (err) {
-//       console.error(err);
-//       return res.status(500).json({ error: "DB error" });
-//     }
-//     res.json(results);
-//   });
-// });
-
-
-
-
-
 // ------------------ HELPER: SEND QUOTE ------------------
 app.post(
   "/api/send-quote",
@@ -601,6 +553,34 @@ app.post(
 
 
 
+
+
+
+
+
+
+
+
+   // 5️⃣ Assign task to helper
+await pool.query(
+  "INSERT INTO task_assignments (task_id, helper_id) VALUES (?, ?)",
+  [task_id, quote.helper_id]
+);
+
+// 🔔 6️⃣ HELPER NOTIFICATION (🔥 ADD THIS)
+await createNotification({
+  user_id: quote.helper_id,          // helper ko
+  task_id: task_id,
+  type: "quote_accepted",
+  title: "🎉 Quote Accepted!",
+  message: "Customer accepted your quote. Please proceed to the task."
+});
+
+// 7️⃣ Lock task
+await pool.query(
+  "UPDATE tasks SET status='assigned' WHERE task_id=?",
+  [task_id]
+);
 
 
 
