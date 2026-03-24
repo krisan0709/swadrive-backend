@@ -561,7 +561,12 @@ app.post(
 
 
 
-   // 5️⃣ Assign task to helper
+ 
+// 5️⃣ Assign task to helper
+app.post("/api/accept-quote", authMiddleware, requireRole("customer"), async (req, res) => {
+  const { quote_id, task_id } = req.body;
+
+  try {
 await pool.query(
   "INSERT INTO task_assignments (task_id, helper_id) VALUES (?, ?)",
   [task_id, quote.helper_id]
@@ -580,7 +585,8 @@ await createNotification({
 await pool.query(
   "UPDATE tasks SET status='assigned' WHERE task_id=?",
   [task_id]
-);
+  }
+});
 
 
 
