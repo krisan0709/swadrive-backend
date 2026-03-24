@@ -562,31 +562,6 @@ app.post(
 
 
  
-// 5️⃣ Assign task to helper
-app.post("/api/accept-quote", authMiddleware, requireRole("customer"), async (req, res) => {
-  const { quote_id, task_id } = req.body;
-
-  try {
-await pool.query(
-  "INSERT INTO task_assignments (task_id, helper_id) VALUES (?, ?)",
-  [task_id, quote.helper_id]
-);
-
-// 🔔 6️⃣ HELPER NOTIFICATION (🔥 ADD THIS)
-await createNotification({
-  user_id: quote.helper_id,          // helper ko
-  task_id: task_id,
-  type: "quote_accepted",
-  title: "🎉 Quote Accepted!",
-  message: "Customer accepted your quote. Please proceed to the task."
-});
-
-// 7️⃣ Lock task
-await pool.query(
-  "UPDATE tasks SET status='assigned' WHERE task_id=?",
-  [task_id]
-  }
-});
 
 
 
@@ -613,6 +588,31 @@ app.post('/api/tasks/:task_id/review', authMiddleware, requireRole("customer"), 
     if (!task)
       return res.status(400).json({ message: "Task not eligible for review" });
 
+
+// 5️⃣ Assign task to helper
+await pool.query(
+  "INSERT INTO task_assignments (task_id, helper_id) VALUES (?, ?)",
+  [task_id, quote.helper_id]
+);
+
+// 🔔 6️⃣ HELPER NOTIFICATION (🔥 ADD THIS)
+await createNotification({
+  user_id: quote.helper_id,          // helper ko
+  task_id: task_id,
+  type: "quote_accepted",
+  title: "🎉 Quote Accepted!",
+  message: "Customer accepted your quote. Please proceed to the task."
+});
+
+// 7️⃣ Lock task
+await pool.query(
+  "UPDATE tasks SET status='assigned' WHERE task_id=?",
+  [task_id]
+  );
+
+
+
+    
     await pool.query(
       `INSERT INTO reviews (task_id, helper_id, customer_id, rating, comment)
        VALUES (?, ?, ?, ?, ?)`,
